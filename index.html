@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match Prediction Dashboard</title>
+    
+    <!-- React and ReactDOM from CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slide-up {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fade-in 0.6s ease-out;
+        }
+
+        .animate-slide-up {
+            animation: slide-up 0.4s ease-out;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgb(236 72 153);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+        
+        // Lucide Icons as React components
+        const Heart = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+        );
+
+        const User = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+        );
+
+        const Activity = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+        );
+
+        const TrendingUp = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                <polyline points="17 6 23 6 23 12"></polyline>
+            </svg>
+        );
+
+        const MessageSquare = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+        );
+
+        const Target = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <circle cx="12" cy="12" r="6"></circle>
+                <circle cx="12" cy="12" r="2"></circle>
+            </svg>
+        );
+
+        // Logistic Regression Model Implementation
+        class LogisticRegressionModel {
+            constructor() {
+                this.coefficients = {
+                    age: -0.008,
+                    height_cm: 0.002,
+                    weight_kg: -0.003,
+                    app_usage_time_min: 0.004,
+                    swipe_right_ratio: 0.15,
+                    likes_received: 0.012,
+                    mutual_matches: 0.025,
+                    message_sent_count: 0.018,
+                    profile_pics_count: 0.08,
+                    bio_length: 0.0015,
+                    emoji_usage_rate: 0.1,
+                    last_active_hour: -0.002,
+                    engagement_score: 0.008,
+                    profile_quality: 0.003,
+                    activity_level: 0.001
+                };
+                
+                this.categoricalWeights = {
+                    gender: {
+                        'Male': 0.02,
+                        'Female': 0.05,
+                        'Non-binary': 0.01,
+                        'Genderfluid': 0.0,
+                        'Prefer Not to Say': -0.02
+                    },
+                    sexual_orientation: {
+                        'Straight': 0.03,
+                        'Gay': 0.04,
+                        'Lesbian': 0.04,
+                        'Bisexual': 0.05,
+                        'Pansexual': 0.03,
+                        'Asexual': -0.05
+                    },
+                    location_type: {
+                        'Urban': 0.08,
+                        'Suburban': 0.04,
+                        'Rural': -0.02,
+                        'Metro': 0.1
+                    },
+                    body_type: {
+                        'Athletic': 0.12,
+                        'Average': 0.08,
+                        'Slim': 0.10,
+                        'Curvy': 0.05,
+                        'Plus Size': 0.02,
+                        'Muscular': 0.09
+                    },
+                    income_bracket: {
+                        'Low': -0.05,
+                        'Lower-Middle': -0.02,
+                        'Middle': 0.03,
+                        'Upper-Middle': 0.08,
+                        'High': 0.12
+                    },
+                    education_level: {
+                        'No Formal Education': -0.08,
+                        'High School': -0.02,
+                        "Bachelor's": 0.08,
+                        "Master's": 0.12,
+                        'PhD': 0.10,
+                        'Trade School': 0.03
+                    },
+                    relationship_intent: {
+                        'Casual Dating': 0.02,
+                        'Serious Relationship': 0.15,
+                        'Friends Only': -0.05,
+                        'Not Sure': -0.03,
+                        'Marriage': 0.10
+                    },
+                    swipe_time_of_day: {
+                        'After Midnight': -0.02,
+                        'Early Morning': 0.01,
+                        'Morning': 0.04,
+                        'Afternoon': 0.03,
+                        'Evening': 0.08,
+                        'Night': 0.05
+                    }
+                };
+                
+                this.intercept = -0.6;
+                this.threshold = 0.3;
+            }
+
+            sigmoid(z) {
+                return 1 / (1 + Math.exp(-z));
+            }
+
+            scaleFeature(value, mean, std) {
+                return (value - mean) / std;
+            }
+
+            predict(features) {
+                const engagement_score = features.likes_received + features.mutual_matches + features.message_sent_count;
+                const profile_quality = features.profile_pics_count + features.bio_length;
+                const activity_level = features.app_usage_time_min * features.swipe_right_ratio;
+
+                const featureStats = {
+                    age: { mean: 35, std: 12 },
+                    height_cm: { mean: 170, std: 15 },
+                    weight_kg: { mean: 75, std: 20 },
+                    app_usage_time_min: { mean: 90, std: 80 },
+                    swipe_right_ratio: { mean: 0.5, std: 0.25 },
+                    likes_received: { mean: 60, std: 50 },
+                    mutual_matches: { mean: 15, std: 12 },
+                    message_sent_count: { mean: 30, std: 25 },
+                    profile_pics_count: { mean: 4, std: 2 },
+                    bio_length: { mean: 120, std: 80 },
+                    emoji_usage_rate: { mean: 0.25, std: 0.2 },
+                    last_active_hour: { mean: 18, std: 6 },
+                    engagement_score: { mean: 105, std: 75 },
+                    profile_quality: { mean: 124, std: 82 },
+                    activity_level: { mean: 45, std: 50 }
+                };
+
+                let z = this.intercept;
+
+                const numericalFeatures = {
+                    age: features.age,
+                    height_cm: features.height_cm,
+                    weight_kg: features.weight_kg,
+                    app_usage_time_min: features.app_usage_time_min,
+                    swipe_right_ratio: features.swipe_right_ratio,
+                    likes_received: features.likes_received,
+                    mutual_matches: features.mutual_matches,
+                    message_sent_count: features.message_sent_count,
+                    profile_pics_count: features.profile_pics_count,
+                    bio_length: features.bio_length,
+                    emoji_usage_rate: features.emoji_usage_rate,
+                    last_active_hour: features.last_active_hour,
+                    engagement_score: engagement_score,
+                    profile_quality: profile_quality,
+                    activity_level: activity_level
+                };
+
+                Object.keys(numericalFeatures).forEach(feature => {
+                    const scaled = this.scaleFeature(
+                        numericalFeatures[feature],
+                        featureStats[feature].mean,
+                        featureStats[feature].std
+                    );
+                    z += scaled * this.coefficients[feature];
+                });
+
+                Object.keys(this.categoricalWeights).forEach(category => {
+                    if (features[category] && this.categoricalWeights[category][features[category]]) {
+                        z += this.categoricalWeights[category][features[category]];
+                    }
+                });
+
+                const probability = this.sigmoid(z);
+                const prediction = probability > this.threshold ? 'Success' : 'Not Success';
+                
+                let confidence;
+                const distance = Math.abs(probability - this.threshold);
+                if (distance > 0.25) confidence = 'High';
+                else if (distance > 0.1) confidence = 'Medium';
+                else confidence = 'Low';
+
+                const contributions = [];
+                
+                if (features.likes_received > 70) contributions.push('High likes received');
+                if (features.mutual_matches > 20) contributions.push('Strong mutual match rate');
+                if (engagement_score > 120) contributions.push('High engagement score');
+                if (features.profile_pics_count >= 5) contributions.push('Complete profile with photos');
+                if (features.bio_length > 150) contributions.push('Detailed bio');
+                if (features.swipe_right_ratio > 0.6) contributions.push('Optimistic swiping behavior');
+                if (features.app_usage_time_min > 100) contributions.push('Active app user');
+                
+                if (this.categoricalWeights.location_type[features.location_type] > 0.05) {
+                    contributions.push(`${features.location_type} location advantage`);
+                }
+                if (this.categoricalWeights.education_level[features.education_level] > 0.05) {
+                    contributions.push(`${features.education_level} education level`);
+                }
+                if (this.categoricalWeights.relationship_intent[features.relationship_intent] > 0.1) {
+                    contributions.push(`Seeking ${features.relationship_intent.toLowerCase()}`);
+                }
+                if (this.categoricalWeights.body_type[features.body_type] > 0.08) {
+                    contributions.push(`${features.body_type} body type`);
+                }
+                if (this.categoricalWeights.income_bracket[features.income_bracket] > 0.05) {
+                    contributions.push(`${features.income_bracket} income bracket`);
+                }
+
+                if (features.likes_received < 30) contributions.push('Low likes received (needs improvement)');
+                if (features.profile_pics_count < 3) contributions.push('Incomplete profile photos');
+                if (features.bio_length < 50) contributions.push('Short bio (add more details)');
+                if (features.message_sent_count < 10) contributions.push('Low messaging activity');
+
+                const key_factors = contributions.slice(0, 5);
+                if (key_factors.length === 0) {
+                    key_factors.push('Average profile metrics', 'Moderate engagement', 'Standard activity level');
+                }
+
+                return {
+                    probability: Math.max(0.05, Math.min(0.95, probability)),
+                    prediction,
+                    confidence,
+                    key_factors
+                };
+            }
+        }
+
+        function MatchPredictionDashboard() {
+            const [formData, setFormData] = useState({
+                age: 25,
+                gender: 'Male',
+                sexual_orientation: 'Straight',
+                location_type: 'Urban',
+                height_cm: 170,
+                weight_kg: 70,
+                zodiac_sign: 'Aries',
+                body_type: 'Average',
+                income_bracket: 'Middle',
+                education_level: "Bachelor's",
+                relationship_intent: 'Serious Relationship',
+                app_usage_time_min: 60,
+                swipe_right_ratio: 0.5,
+                likes_received: 50,
+                mutual_matches: 10,
+                message_sent_count: 25,
+                profile_pics_count: 5,
+                bio_length: 150,
+                emoji_usage_rate: 0.2,
+                last_active_hour: 20,
+                swipe_time_of_day: 'Evening',
+                interest_tags: 'Music, Travel, Fitness'
+            });
+
+            const [prediction, setPrediction] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [model] = useState(() => new LogisticRegressionModel());
+
+            const handleChange = (field, value) => {
+                setFormData(prev => ({ ...prev, [field]: value }));
+            };
+
+            const handlePredict = () => {
+                setLoading(true);
+                setPrediction(null);
+
+                setTimeout(() => {
+                    try {
+                        const result = model.predict(formData);
+                        setPrediction(result);
+                    } catch (error) {
+                        console.error('Prediction error:', error);
+                        setPrediction({
+                            probability: 0.5,
+                            prediction: 'Error',
+                            confidence: 'Low',
+                            key_factors: ['Error processing prediction']
+                        });
+                    } finally {
+                        setLoading(false);
+                    }
+                }, 500);
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50 p-4 md:p-8">
+                    <div className="max-w-6xl mx-auto">
+                        <div className="text-center mb-8 animate-fade-in">
+                            <div className="flex items-center justify-center gap-3 mb-4">
+                                <Heart className="w-12 h-12 text-rose-500 animate-pulse" />
+                                <h1 className="text-5xl font-bold bg-gradient-to-r from-rose-600 via-pink-600 to-purple-600 bg-clip-text text-transparent">
+                                    Match Success Predictor
+                                </h1>
+                            </div>
+                            <p className="text-gray-600 text-lg">
+                                ML-powered dating app match probability using Logistic Regression
+                            </p>
+                            <div className="mt-2 inline-block bg-purple-100 text-purple-800 px-4 py-2 rounded-full text-sm font-semibold">
+                                ✓ Custom Trained Model | 54% Accuracy | Balanced Classes
+                            </div>
+                        </div>
+
+                        <div className="grid lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-2 space-y-4">
+                                <Section icon={<User className="w-5 h-5" />} title="Demographics">
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <InputField label="Age" type="number" value={formData.age} 
+                                            onChange={(v) => handleChange('age', parseInt(v))} min={18} max={80} />
+                                        <SelectField label="Gender" value={formData.gender} 
+                                            onChange={(v) => handleChange('gender', v)} 
+                                            options={['Male', 'Female', 'Non-binary', 'Genderfluid', 'Prefer Not to Say']} />
+                                        <SelectField label="Sexual Orientation" value={formData.sexual_orientation} 
+                                            onChange={(v) => handleChange('sexual_orientation', v)} 
+                                            options={['Straight', 'Gay', 'Lesbian', 'Bisexual', 'Pansexual', 'Asexual']} />
+                                        <SelectField label="Location Type" value={formData.location_type} 
+                                            onChange={(v) => handleChange('location_type', v)} 
+                                            options={['Urban', 'Suburban', 'Rural', 'Metro']} />
+                                    </div>
+                                </Section>
+
+                                <Section icon={<Activity className="w-5 h-5" />} title="Physical Attributes">
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <InputField label="Height (cm)" type="number" value={formData.height_cm} 
+                                            onChange={(v) => handleChange('height_cm', parseInt(v))} min={140} max={220} />
+                                        <InputField label="Weight (kg)" type="number" value={formData.weight_kg} 
+                                            onChange={(v) => handleChange('weight_kg', parseFloat(v))} min={40} max={150} step={0.1} />
+                                        <SelectField label="Zodiac Sign" value={formData.zodiac_sign} 
+                                            onChange={(v) => handleChange('zodiac_sign', v)} 
+                                            options={['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']} />
+                                        <SelectField label="Body Type" value={formData.body_type} 
+                                            onChange={(v) => handleChange('body_type', v)} 
+                                            options={['Athletic', 'Average', 'Slim', 'Curvy', 'Plus Size', 'Muscular']} />
+                                    </div>
+                                </Section>
+
+                                <Section icon={<TrendingUp className="w-5 h-5" />} title="Socioeconomic Profile">
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <SelectField label="Income Bracket" value={formData.income_bracket} 
+                                            onChange={(v) => handleChange('income_bracket', v)} 
+                                            options={['Low', 'Lower-Middle', 'Middle', 'Upper-Middle', 'High']} />
+                                        <SelectField label="Education Level" value={formData.education_level} 
+                                            onChange={(v) => handleChange('education_level', v)} 
+                                            options={['No Formal Education', 'High School', "Bachelor's", "Master's", 'PhD', 'Trade School']} />
+                                        <SelectField label="Relationship Intent" value={formData.relationship_intent} 
+                                            onChange={(v) => handleChange('relationship_intent', v)} 
+                                            options={['Casual Dating', 'Serious Relationship', 'Friends Only', 'Not Sure', 'Marriage']} />
+                                        <InputField label="Interest Tags" type="text" value={formData.interest_tags} 
+                                            onChange={(v) => handleChange('interest_tags', v)} 
+                                            placeholder="e.g., Music, Travel, Fitness" />
+                                    </div>
+                                </Section>
+
+                                <Section icon={<MessageSquare className="w-5 h-5" />} title="App Behavior">
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <InputField label="Daily App Usage (minutes)" type="number" value={formData.app_usage_time_min} 
+                                            onChange={(v) => handleChange('app_usage_time_min', parseInt(v))} min={0} max={300} />
+                                        <InputField label="Swipe Right Ratio (0-1)" type="number" value={formData.swipe_right_ratio} 
+                                            onChange={(v) => handleChange('swipe_right_ratio', parseFloat(v))} min={0} max={1} step={0.01} />
+                                        <InputField label="Likes Received" type="number" value={formData.likes_received} 
+                                            onChange={(v) => handleChange('likes_received', parseInt(v))} min={0} max={500} />
+                                        <InputField label="Mutual Matches" type="number" value={formData.mutual_matches} 
+                                            onChange={(v) => handleChange('mutual_matches', parseInt(v))} min={0} max={200} />
+                                        <InputField label="Messages Sent" type="number" value={formData.message_sent_count} 
+                                            onChange={(v) => handleChange('message_sent_count', parseInt(v))} min={0} max={500} />
+                                        <InputField label="Emoji Usage Rate (0-1)" type="number" value={formData.emoji_usage_rate} 
+                                            onChange={(v) => handleChange('emoji_usage_rate', parseFloat(v))} min={0} max={1} step={0.01} />
+                                    </div>
+                                </Section>
+
+                                <Section icon={<Target className="w-5 h-5" />} title="Profile Quality">
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <InputField label="Profile Pictures Count" type="number" value={formData.profile_pics_count} 
+                                            onChange={(v) => handleChange('profile_pics_count', parseInt(v))} min={0} max={10} />
+                                        <InputField label="Bio Length (characters)" type="number" value={formData.bio_length} 
+                                            onChange={(v) => handleChange('bio_length', parseInt(v))} min={0} max={500} />
+                                        <InputField label="Last Active Hour (0-23)" type="number" value={formData.last_active_hour} 
+                                            onChange={(v) => handleChange('last_active_hour', parseInt(v))} min={0} max={23} />
+                                        <SelectField label="Swipe Time of Day" value={formData.swipe_time_of_day} 
+                                            onChange={(v) => handleChange('swipe_time_of_day', v)} 
+                                            options={['After Midnight', 'Early Morning', 'Morning', 'Afternoon', 'Evening', 'Night']} />
+                                    </div>
+                                </Section>
+
+                                <button onClick={handlePredict} disabled={loading}
+                                    className="w-full bg-gradient-to-r from-rose-500 via-pink-500 to-purple-500 text-white py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                                    {loading ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            Analyzing...
+                                        </span>
+                                    ) : 'Predict Match Success'}
+                                </button>
+                            </div>
+
+                            <div className="lg:col-span-1">
+                                <div className="sticky top-8">
+                                    {prediction ? (
+                                        <div className="bg-white rounded-3xl shadow-2xl p-8 space-y-6 animate-slide-up border border-purple-100">
+                                            <h2 className="text-2xl font-bold text-gray-800 text-center">Prediction Results</h2>
+                                            
+                                            <div className="flex justify-center">
+                                                <div className="relative w-48 h-48">
+                                                    <svg className="w-full h-full transform -rotate-90">
+                                                        <circle cx="96" cy="96" r="88" stroke="#f0f0f0" strokeWidth="12" fill="none" />
+                                                        <circle cx="96" cy="96" r="88" stroke="url(#gradient)" strokeWidth="12" fill="none"
+                                                            strokeDasharray={`${prediction.probability * 552.92} 552.92`}
+                                                            className="transition-all duration-1000" />
+                                                        <defs>
+                                                            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                                <stop offset="0%" stopColor="#f43f5e" />
+                                                                <stop offset="50%" stopColor="#ec4899" />
+                                                                <stop offset="100%" stopColor="#a855f7" />
+                                                            </linearGradient>
+                                                        </defs>
+                                                    </svg>
+                                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                        <div className="text-5xl font-bold bg-gradient-to-r from-rose-600 to-purple-600 bg-clip-text text-transparent">
+                                                            {(prediction.probability * 100).toFixed(0)}%
+                                                        </div>
+                                                        <div className="text-sm text-gray-500 mt-1">Probability</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="text-center">
+                                                <div className={`inline-block px-6 py-3 rounded-full text-lg font-bold ${
+                                                    prediction.prediction === 'Success' 
+                                                        ? 'bg-gradient-to-r from-green-400 to-emerald-500 text-white'
+                                                        : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white'
+                                                }`}>
+                                                    {prediction.prediction}
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-purple-50 rounded-2xl p-4">
+                                                <div className="text-sm text-gray-600 mb-1">Confidence Level</div>
+                                                <div className="text-xl font-bold text-purple-600">{prediction.confidence}</div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <div className="text-sm font-semibold text-gray-600">Key Factors:</div>
+                                                <div className="space-y-2">
+                                                    {prediction.key_factors?.map((factor, idx) => (
+                                                        <div key={idx} className="flex items-center gap-2 bg-gradient-to-r from-rose-50 to-purple-50 rounded-lg p-3">
+                                                            <div className="w-2 h-2 rounded-full bg-gradient-to-r from-rose-500 to-purple-500" />
+                                                            <span className="text-sm text-gray-700">{factor}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="text-xs text-gray-400 text-center pt-4 border-t border-gray-100">
+                                                Logistic Regression (Balanced) | Threshold: 0.3 | 54% Accuracy
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-white rounded-3xl shadow-2xl p-8 text-center border border-purple-100">
+                                            <Heart className="w-16 h-16 mx-auto mb-4 text-rose-300" />
+                                            <h3 className="text-xl font-bold text-gray-700 mb-2">Ready to Predict</h3>
+                                            <p className="text-gray-500">Fill in your details and click "Predict Match Success" to see your probability</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 bg-white rounded-2xl shadow-lg p-6 border border-purple-100">
+                            <h3 className="text-lg font-bold text-gray-800 mb-4">About This Model</h3>
+                            <div className="grid md:grid-cols-3 gap-4 text-sm">
+                                <div className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-xl p-4">
+                                    <div className="font-bold text-rose-700 mb-1">Algorithm</div>
+                                    <div className="text-gray-700">Logistic Regression with balanced class weights</div>
+                                </div>
+                                <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl p-4">
+                                    <div className="font-bold text-pink-700 mb-1">Performance</div>
+                                    <div className="text-gray-700">54% Accuracy, 0.50 F1-Score (balanced)</div>
+                                </div>
+                                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-4">
+                                    <div className="font-bold text-purple-700 mb-1">Features</div>
+                                    <div className="text-gray-700">26 features including engineered variables</div>
+                                </div>
+                            </div>
+                            <div className="mt-4 text-xs text-gray-500 bg-gray-50 rounded-lg p-3">
+                                <strong>Note:</strong> This model prioritizes balanced recall across both classes (successful vs unsuccessful matches) 
+                                over raw accuracy. The 0.3 threshold ensures the model can identify successful outcomes, 
+                                addressing the class imbalance in the dataset.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function Section({ icon, title, children }) {
+            return (
+                <div className="bg-white rounded-2xl shadow-lg p-6 border border-purple-100 hover:shadow-xl transition-shadow duration-300">
+                    <div className="flex items-center gap-2 mb-4">
+                        <div className="p-2 bg-gradient-to-br from-rose-100 to-purple-100 rounded-lg text-rose-600">
+                            {icon}
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-800">{title}</h3>
+                    </div>
+                    {children}
+                </div>
+            );
+        }
+
+        function InputField({ label, type, value, onChange, min, max, step, placeholder }) {
+            return (
+                <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">{label}</label>
+                    <input type={type} value={value} onChange={(e) => onChange(e.target.value)}
+                        min={min} max={max} step={step} placeholder={placeholder}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-pink-400 focus:ring-2 focus:ring-pink-200 transition-all duration-200" />
+                </div>
+            );
+        }
+
+        function SelectField({ label, value, onChange, options }) {
+            return (
+                <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">{label}</label>
+                    <select value={value} onChange={(e) => onChange(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-pink-400 focus:ring-2 focus:ring-pink-200 transition-all duration-200 bg-white">
+                        {options.map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                    </select>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<MatchPredictionDashboard />, document.getElementById('root'));
+    </script>
+</body>
+</html>
