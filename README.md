@@ -3,7 +3,7 @@
 A machine learning-powered web application that predicts the probability of success in a dating match using a Logistic Regression model.
 
 ## 🚀 Live Demo
-(Add your deployed link here after hosting)
+https://zhiheng0310.github.io/WIA1006-Assignment--Prediction-Match-Outcome-Dashboard/
 
 ---
 
